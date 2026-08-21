@@ -63,7 +63,9 @@ export function safeClientError(error: unknown) {
     "PDF file name is too long",
     "Invalid PDF",
     "Project not found",
-    "No analysis table rows were detected",
+    "No COA analysis fields could be mapped",
+    "OCR is required",
+    "supplier layout needs a new extraction rule",
     "too many pages",
     "too much extractable text",
   ];

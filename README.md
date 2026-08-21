@@ -10,3 +10,8 @@ Flat SaaS dashboard: upload/convert at the top, all History below.
 - Existing upload hardening, progress workflow, private Storage and Excel generation remain unchanged.
 
 No Supabase schema or environment-variable changes are required for this update.
+
+
+## v5.7 supplier-independent COA parsing
+
+The parser no longer requires one fixed supplier table or a fixed list of COA rows. It rebuilds visual text lines from PDF coordinates, detects common metadata labels with aliases, and infers test/specification/result/method fields from layout and value semantics. It supports multi-column tables, reduced-column layouts, labeled prose, and vertical/card-style COA fields. Image-only scanned PDFs still require OCR.

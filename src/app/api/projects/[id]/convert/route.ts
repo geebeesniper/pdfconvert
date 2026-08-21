@@ -148,11 +148,11 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
           const pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer());
           assertPdfBytes(pdfBytes);
 
-          send({ type: "stage", stage: "Parsing COA", detail: "Extracting product, batch, dates and analysis rows…", progress: 52, conversionId });
+          send({ type: "stage", stage: "Parsing COA", detail: "Reading product, batch, dates and COA test fields across the supplier layout…", progress: 52, conversionId });
           const parsed = await withTimeout(parseCoaPdf(pdfBytes), 25_000, "PDF processing timed out.");
-          if (!parsed.items.length) throw new Error("No analysis table rows were detected. This PDF may be scanned and needs OCR.");
+          if (!parsed.items.length) throw new Error("No COA analysis fields could be mapped. If this is an image-only PDF, OCR is required; otherwise this supplier layout needs a new extraction rule.");
 
-          send({ type: "stage", stage: "Mapping fields", detail: `Detected ${parsed.items.length} analysis rows. Normalizing the COA structure…`, progress: 68, conversionId });
+          send({ type: "stage", stage: "Mapping fields", detail: `Detected ${parsed.items.length} COA test fields. Normalizing them into the Excel schema…`, progress: 68, conversionId });
           const type = resolveTemplate(parsed, project.default_template);
 
           send({ type: "stage", stage: "Building Excel", detail: `Using the ${type} template and preserving workbook formatting…`, progress: 80, conversionId });
