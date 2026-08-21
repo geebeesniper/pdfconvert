@@ -3,6 +3,26 @@ import type { StructuredTextItem } from "unpdf";
 import type { AnalysisItem, ParsedCoa } from "./types";
 import { MAX_ANALYSIS_ROWS, MAX_EXTRACTED_TEXT_CHARS, MAX_PDF_PAGES } from "./upload-security";
 
+
+async function releasePdfDocument(pdf: unknown) {
+  const candidate = pdf as {
+    destroy?: () => Promise<unknown> | unknown;
+    cleanup?: () => Promise<unknown> | unknown;
+  };
+
+  try {
+    if (typeof candidate.destroy === "function") {
+      await candidate.destroy();
+      return;
+    }
+    if (typeof candidate.cleanup === "function") {
+      await candidate.cleanup();
+    }
+  } catch {
+    // Cleanup must never turn a completed conversion into an API failure.
+  }
+}
+
 function clean(s: string) {
   return s.replace(/\u00a0/g, " ").replace(/[ \t]+/g, " ").trim();
 }
@@ -160,6 +180,6 @@ export async function parseCoaPdf(pdfBytes: Uint8Array): Promise<ParsedCoa> {
 
     return { productName, botanicalSource, partUsed, batchNumber, countryOfOrigin, manufacturingDate, expirationDate, items, rawText, warnings };
   } finally {
-    await pdf.destroy().catch(() => undefined);
+    await releasePdfDocument(pdf);
   }
 }
