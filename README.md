@@ -1,22 +1,12 @@
-# PDFConvertor — SaaS workflow v5.5
+# pdfconvertor v5.6
 
-This build keeps the flat dashboard requested for production:
+Flat SaaS dashboard: upload/convert at the top, all History below.
 
-1. Drop/select a COA PDF at the top.
-2. Click **Export to Excel**.
-3. A live SaaS-style task card immediately shows the current stage and progress:
-   - Preparing upload
-   - Uploading PDF
-   - Verifying upload
-   - Reading PDF
-   - Parsing COA
-   - Mapping fields
-   - Building Excel
-   - Saving output
-   - Excel ready / Error
-4. History remains directly below the uploader and refreshes when the task completes.
-5. Failed tasks report a visible error and the same selected PDF can be retried.
+## v5.6 deletion fix
 
-The conversion API streams newline-delimited JSON progress events, so the UI no longer sits silently while Vercel parses the PDF and generates Excel.
+- History is now a client-managed list, so a successful DELETE removes the card immediately.
+- The home dashboard is forced dynamic (`force-dynamic`, `revalidate = 0`) so reloads always read current Supabase rows instead of a stale prerendered result.
+- DELETE now verifies that exactly one database row was actually deleted before reporting success.
+- Existing upload hardening, progress workflow, private Storage and Excel generation remain unchanged.
 
-Security limits from v5.x remain in place: PDF validation, 5 MB upload cap, page/parse limits, private Supabase Storage, server-side validation, processing timeouts, and safe history deletion.
+No Supabase schema or environment-variable changes are required for this update.

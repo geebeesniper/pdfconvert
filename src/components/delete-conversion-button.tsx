@@ -1,20 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
-export function DeleteConversionButton({ id }: { id: string }) {
-  const router = useRouter();
+export function DeleteConversionButton({
+  id,
+  onDeleted,
+}: {
+  id: string;
+  onDeleted?: (id: string) => void;
+}) {
   const [armed, setArmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [warning, setWarning] = useState("");
 
   async function remove() {
     if (busy) return;
     setBusy(true);
     setError("");
-    setWarning("");
 
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), 15_000);
@@ -29,15 +31,13 @@ export function DeleteConversionButton({ id }: { id: string }) {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Could not delete this conversion.");
 
-      if (Array.isArray(data.cleanupWarnings) && data.cleanupWarnings.length) {
-        setWarning("History deleted. One stored file may need cleanup later.");
-      }
-
+      // Do not depend on router.refresh() to make a deleted card disappear.
+      // The History client state is the immediate source of truth for the UI.
+      onDeleted?.(id);
       setArmed(false);
-      router.refresh();
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") {
-        setError("Delete timed out. Refresh the page to check whether the history was removed.");
+        setError("Delete timed out. Please retry.");
       } else {
         setError(e instanceof Error ? e.message : "Could not delete this conversion.");
       }
@@ -49,12 +49,9 @@ export function DeleteConversionButton({ id }: { id: string }) {
 
   if (!armed) {
     return (
-      <div>
-        <button className="danger-link" type="button" onClick={() => setArmed(true)}>
-          Delete
-        </button>
-        {warning && <div className="notice warning compact">{warning}</div>}
-      </div>
+      <button className="danger-link" type="button" onClick={() => setArmed(true)}>
+        Delete
+      </button>
     );
   }
 

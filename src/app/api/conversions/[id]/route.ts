@@ -58,13 +58,19 @@ export async function DELETE(_request: Request, ctx: { params: Promise<{ id: str
     // even if Supabase Storage is temporarily slow. File cleanup is best effort
     // and each operation has its own hard timeout.
     const deleted = await withTimeout(
-      db.from("conversions").delete().eq("id", id),
+      db.from("conversions").delete().eq("id", id).select("id"),
       6_000,
       "History deletion",
     );
 
     if (deleted.error) {
       return NextResponse.json({ error: deleted.error.message }, { status: 500 });
+    }
+    if (!deleted.data || deleted.data.length !== 1) {
+      return NextResponse.json(
+        { error: "History record was not deleted. Please retry." },
+        { status: 409 },
+      );
     }
 
     const cleanupWarnings: string[] = [];
