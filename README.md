@@ -48,3 +48,11 @@ There is no Project Grid and no login page. The root page is:
 3. All History below
 
 The internal workspace project exists only as a database grouping key and is not shown in the UI.
+
+## v6.2 compatibility fix
+
+This package intentionally includes harmless compatibility files for the old
+`/api/projects`, `/projects`, and `/login` paths. They overwrite stale files
+that can remain when a newer release is copied over an older Git checkout.
+The active application remains the flat dashboard: upload at the top, all
+conversion history below, fixed Key In COA Excel output.

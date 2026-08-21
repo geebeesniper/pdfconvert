@@ -1,5 +1,4 @@
-"use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import type { Project } from "@/lib/types";
-export function ProjectSettingsForm({project}:{project:Project}){const router=useRouter();const[msg,setMsg]=useState("");const[busy,setBusy]=useState(false);async function save(e:React.FormEvent<HTMLFormElement>){e.preventDefault();setBusy(true);setMsg("");const f=new FormData(e.currentTarget);const r=await fetch(`/api/projects/${project.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({name:f.get("name"),description:f.get("description"),defaultTemplate:f.get("template"),outputProductName:f.get("outputProductName"),batchPrefix:f.get("batchPrefix")})});const d=await r.json();setBusy(false);setMsg(r.ok?"Saved.":d.error||"Save failed.");if(r.ok)router.refresh();}return <details className="panel settings"><summary>Project settings <span>template, output name, batch rule</span></summary><form className="form-grid" onSubmit={save}><label>Project name<input name="name" defaultValue={project.name}/></label><label>Template<select name="template" defaultValue={project.default_template}><option value="auto">Auto detect</option><option value="powder">Powder</option><option value="assay">Assay</option><option value="ratio">Ratio</option></select></label><label className="wide">Description<input name="description" defaultValue={project.description||""}/></label><label>Output product name<input name="outputProductName" defaultValue={project.output_product_name||""}/></label><label>Batch prefix<input name="batchPrefix" defaultValue={project.batch_prefix||""}/></label><div className="wide actions"><span className="muted">{msg}</span><button className="primary" disabled={busy}>{busy?"Saving…":"Save settings"}</button></div></form></details>}
+/** Legacy compatibility component. Project settings are not used anymore. */
+export function ProjectSettingsForm() {
+  return null;
+}
