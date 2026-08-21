@@ -1,19 +1,22 @@
-# pdfconvertor — flat dashboard v5.3
+# PDFConvertor — SaaS workflow v5.5
 
-The production UI is intentionally flat:
+This build keeps the flat dashboard requested for production:
 
-1. Open `/`.
-2. Drop or choose a COA PDF in the upload panel at the top.
-3. Convert it to Excel.
-4. See **all conversion history directly below the uploader**.
-5. Download or delete individual history records.
+1. Drop/select a COA PDF at the top.
+2. Click **Export to Excel**.
+3. A live SaaS-style task card immediately shows the current stage and progress:
+   - Preparing upload
+   - Uploading PDF
+   - Verifying upload
+   - Reading PDF
+   - Parsing COA
+   - Mapping fields
+   - Building Excel
+   - Saving output
+   - Excel ready / Error
+4. History remains directly below the uploader and refreshes when the task completes.
+5. Failed tasks report a visible error and the same selected PDF can be retried.
 
-There is no project grid and no project-detail navigation in the UI. The database still retains `project_id` internally for compatibility. New uploads are attached to one hidden `COA Workspace`; old conversion history from prior projects is still shown in the single History section.
+The conversion API streams newline-delimited JSON progress events, so the UI no longer sits silently while Vercel parses the PDF and generates Excel.
 
-## Existing Supabase project
-
-No destructive migration is required. The app creates the hidden workspace automatically. Optionally run:
-
-`supabase/flat-dashboard-workspace.sql`
-
-The existing upload hardening, private Storage buckets, PDF validation, size limits and conversion error handling remain unchanged.
+Security limits from v5.x remain in place: PDF validation, 5 MB upload cap, page/parse limits, private Supabase Storage, server-side validation, processing timeouts, and safe history deletion.
