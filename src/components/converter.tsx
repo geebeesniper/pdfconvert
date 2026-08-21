@@ -62,7 +62,7 @@ export function Converter({ projectId, enabled }: { projectId: string; enabled: 
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Conversion failed.");
 
-      setProgress("Ready. Added to project history.");
+      setProgress("Ready. Added to history.");
       setFile(null);
       if (input.current) input.current.value = "";
       router.refresh();
@@ -76,7 +76,7 @@ export function Converter({ projectId, enabled }: { projectId: string; enabled: 
   return (
     <section className="panel upload-panel">
       <div className="panel-title">
-        <div><strong>Convert a COA</strong><span>PDF → project template → Excel → history</span></div>
+        <div><strong>Convert a COA</strong><span>PDF → Excel → history</span></div>
         <span className="status-dot ready" />
       </div>
       {!enabled && <div className="notice warning">Supabase is not configured yet. Run <code>supabase/schema.sql</code> and add the Vercel environment variables.</div>}

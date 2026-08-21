@@ -71,3 +71,16 @@ revoke all on table public.project_dashboard from anon, authenticated;
 grant select, insert, update, delete on table public.projects to service_role;
 grant select, insert, update, delete on table public.conversions to service_role;
 grant select on table public.project_dashboard to service_role;
+
+-- Flat dashboard internal workspace. The UI no longer exposes projects, but
+-- conversions retain project_id for schema compatibility and future grouping.
+insert into public.projects (id,name,description,default_template,output_product_name,batch_prefix)
+values (
+  '22222222-2222-4222-8222-222222222222',
+  'COA Workspace',
+  'Internal workspace used by the flat COA dashboard.',
+  'auto',
+  null,
+  null
+)
+on conflict (id) do nothing;
