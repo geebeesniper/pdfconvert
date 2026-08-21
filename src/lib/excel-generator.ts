@@ -76,8 +76,14 @@ function writeAnalysisRows(ws: ExcelJS.Worksheet, parsed: ParsedCoa) {
 
 export async function generateExcel(parsed: ParsedCoa, project: Project, type: ResolvedTemplateType) {
   const workbook = new ExcelJS.Workbook();
-  const bytes = Buffer.from(TEMPLATE_BASE64[type], "base64");
-  await workbook.xlsx.load(bytes);
+  const nodeBuffer = Buffer.from(TEMPLATE_BASE64[type], "base64");
+  // ExcelJS 4.x types load() as ArrayBuffer. Node's Buffer is a Uint8Array
+  // view, so pass the exact underlying byte range as a real ArrayBuffer.
+  const templateBuffer = nodeBuffer.buffer.slice(
+    nodeBuffer.byteOffset,
+    nodeBuffer.byteOffset + nodeBuffer.byteLength,
+  ) as ArrayBuffer;
+  await workbook.xlsx.load(templateBuffer);
   const ws = workbook.worksheets[0];
   if (!ws) throw new Error("Template workbook has no worksheet.");
 

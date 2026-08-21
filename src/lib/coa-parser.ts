@@ -110,9 +110,21 @@ export async function parseCoaPdf(pdfBytes: Uint8Array): Promise<ParsedCoa> {
   const structured = await extractTextItems(pdf);
   const structuredLines = linesFromItems(structured.items);
   const merged = await extractText(pdf, { mergePages: true });
-  const fallbackText = typeof merged.text === "string" ? merged.text : merged.text.join("\n");
-  const rawText = structuredLines.filter(Boolean).length > 4 ? structuredLines.join("\n") : fallbackText;
-  const lines = rawText.split(/\r?\n/).filter((x) => clean(x));
+  // unpdf returns a single string when mergePages is true. Keep the value
+  // normalized through unknown so this also stays compatible if unpdf changes
+  // the return shape in a future version.
+  const mergedText: unknown = merged.text;
+  const fallbackText = Array.isArray(mergedText)
+    ? mergedText.map((value) => String(value)).join("\n")
+    : typeof mergedText === "string"
+      ? mergedText
+      : mergedText == null
+        ? ""
+        : String(mergedText);
+  const rawText: string = structuredLines.filter(Boolean).length > 4
+    ? structuredLines.join("\n")
+    : fallbackText;
+  const lines: string[] = rawText.split(/\r?\n/).filter((x: string) => Boolean(clean(x)));
   const labels = ["Product Name", "Botanical Source", "Batch Number", "Part Used", "Country of Origin", "Production Date", "Manufacturing Date", "Expiration Date", "ANALYSIS", "Items of Analysis"];
 
   const productName = capture(rawText, ["Product Name"], labels.filter((x) => x !== "Product Name"));
