@@ -92,3 +92,8 @@ Browser → signed Supabase Storage upload
 ## Current parser boundary
 
 The included parser handles text-based COAs like the supplied Lipond sample. Scanned/image-only PDFs will be recorded as an error or warning until an OCR fallback is added. The code is structured so OCR can be added inside `src/lib/coa-parser.ts` without changing the project/history or Excel pipeline.
+
+## Project creation UX
+The Projects screen now starts with a `+ New project` grid card. Clicking it opens the PDF picker immediately. After a PDF is selected, the only required input is the project name; the app creates the project with automatic template detection, uploads the PDF, converts it, and opens the project history.
+
+If your Supabase database was initialized with the first demo schema and you want to remove the seeded Chasteberry sample card, run `supabase/remove-demo-project.sql` once in the Supabase SQL Editor.
