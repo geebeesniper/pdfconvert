@@ -3,6 +3,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { MAX_PDF_BYTES, validatePdfFileName } from "@/lib/upload-security";
 
 function suggestedProjectName(fileName: string) {
   return fileName
@@ -32,15 +33,26 @@ export function NewProjectForm({ enabled }: { enabled: boolean }) {
     inputRef.current?.click();
   }
 
-  function onFileSelected(selected?: File) {
+  async function onFileSelected(selected?: File) {
     if (!selected) return;
-    if (!(selected.type === "application/pdf" || selected.name.toLowerCase().endsWith(".pdf"))) {
-      setError("Please choose a PDF file.");
-      return;
+    try {
+      validatePdfFileName(selected.name);
+      if (selected.type && selected.type !== "application/pdf") throw new Error("Please choose a PDF file.");
+      if (selected.size <= 0) throw new Error("The PDF is empty.");
+      if (selected.size > MAX_PDF_BYTES) throw new Error(`PDF is too large. Maximum size is ${MAX_PDF_BYTES / 1024 / 1024} MB.`);
+
+      const head = new Uint8Array(await selected.slice(0, 1024).arrayBuffer());
+      const signature = new TextDecoder("latin1").decode(head);
+      if (!signature.includes("%PDF-")) throw new Error("This file does not contain a valid PDF header.");
+
+      setFile(selected);
+      setName(suggestedProjectName(selected.name));
+      setError("");
+    } catch (err) {
+      setFile(null);
+      setError(err instanceof Error ? err.message : "Please choose a valid PDF file.");
+      if (inputRef.current) inputRef.current.value = "";
     }
-    setFile(selected);
-    setName(suggestedProjectName(selected.name));
-    setError("");
   }
 
   function close() {
@@ -78,7 +90,7 @@ export function NewProjectForm({ enabled }: { enabled: boolean }) {
       const signResponse = await fetch("/api/uploads/sign", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ projectId, fileName: file.name }),
+        body: JSON.stringify({ projectId, fileName: file.name, fileSize: file.size }),
       });
       const signed = await signResponse.json();
       if (!signResponse.ok) throw new Error(signed.error || "Could not prepare upload.");
@@ -123,7 +135,7 @@ export function NewProjectForm({ enabled }: { enabled: boolean }) {
         className="visually-hidden"
         type="file"
         accept="application/pdf,.pdf"
-        onChange={(e) => onFileSelected(e.target.files?.[0])}
+        onChange={(e) => void onFileSelected(e.target.files?.[0])}
       />
 
       <button className="project-card add-project-card" type="button" onClick={chooseFile}>

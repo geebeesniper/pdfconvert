@@ -1,6 +1,7 @@
 import { extractText, extractTextItems, getDocumentProxy } from "unpdf";
 import type { StructuredTextItem } from "unpdf";
 import type { AnalysisItem, ParsedCoa } from "./types";
+import { MAX_ANALYSIS_ROWS, MAX_EXTRACTED_TEXT_CHARS, MAX_PDF_PAGES } from "./upload-security";
 
 function clean(s: string) {
   return s.replace(/\u00a0/g, " ").replace(/[ \t]+/g, " ").trim();
@@ -32,6 +33,7 @@ function capture(text: string, labels: string[], stopLabels: string[]) {
 /** Rebuild visual PDF rows from positioned PDF.js text items. */
 function linesFromItems(pages: StructuredTextItem[][]) {
   const output: string[] = [];
+  let charCount = 0;
   for (const page of pages) {
     const sorted = [...page].filter((x) => clean(x.str)).sort((a, b) => b.y - a.y || a.x - b.x);
     const rows: StructuredTextItem[][] = [];
@@ -54,7 +56,12 @@ function linesFromItems(pages: StructuredTextItem[][]) {
         line += item.str;
         previousEnd = item.x + item.width;
       }
-      if (clean(line)) output.push(line.trimEnd());
+      if (clean(line)) {
+        const value = line.trimEnd();
+        charCount += value.length + 1;
+        if (charCount > MAX_EXTRACTED_TEXT_CHARS) throw new Error("PDF contains too much extractable text.");
+        output.push(value);
+      }
     }
     output.push("");
   }
@@ -101,29 +108,39 @@ function parseTable(lines: string[]): AnalysisItem[] {
     if (!row) continue;
     const rowSection = /^(Assay|Ratio)$/i.test(row[0]) ? "special" : section;
     items.push({ item: row[0], specification: row[1], result: row[2], testMethod: row[3], section: rowSection });
+    if (items.length >= MAX_ANALYSIS_ROWS) break;
   }
   return items;
 }
 
 export async function parseCoaPdf(pdfBytes: Uint8Array): Promise<ParsedCoa> {
   const pdf = await getDocumentProxy(pdfBytes);
-  const structured = await extractTextItems(pdf);
-  const structuredLines = linesFromItems(structured.items);
-  const merged = await extractText(pdf, { mergePages: true });
-  // unpdf returns a single string when mergePages is true. Keep the value
-  // normalized through unknown so this also stays compatible if unpdf changes
-  // the return shape in a future version.
-  const mergedText: unknown = merged.text;
-  const fallbackText = Array.isArray(mergedText)
-    ? mergedText.map((value) => String(value)).join("\n")
-    : typeof mergedText === "string"
-      ? mergedText
-      : mergedText == null
-        ? ""
-        : String(mergedText);
-  const rawText: string = structuredLines.filter(Boolean).length > 4
-    ? structuredLines.join("\n")
-    : fallbackText;
+  try {
+    if (pdf.numPages > MAX_PDF_PAGES) {
+      throw new Error(`PDF has too many pages. Maximum is ${MAX_PDF_PAGES}.`);
+    }
+
+    const structured = await extractTextItems(pdf);
+    const structuredLines = linesFromItems(structured.items);
+    let rawText = structuredLines.filter(Boolean).length > 4 ? structuredLines.join("\n") : "";
+
+    // Only run the second extraction path when positioned extraction did not
+    // produce useful text. Avoiding duplicate extraction lowers CPU and memory.
+    if (!rawText) {
+      const merged = await extractText(pdf, { mergePages: true });
+      const mergedText: unknown = merged.text;
+      rawText = Array.isArray(mergedText)
+        ? mergedText.map((value) => String(value)).join("\n")
+        : typeof mergedText === "string"
+          ? mergedText
+          : mergedText == null
+            ? ""
+            : String(mergedText);
+    }
+
+    if (rawText.length > MAX_EXTRACTED_TEXT_CHARS) {
+      throw new Error("PDF contains too much extractable text.");
+    }
   const lines: string[] = rawText.split(/\r?\n/).filter((x: string) => Boolean(clean(x)));
   const labels = ["Product Name", "Botanical Source", "Batch Number", "Part Used", "Country of Origin", "Production Date", "Manufacturing Date", "Expiration Date", "ANALYSIS", "Items of Analysis"];
 
@@ -141,5 +158,8 @@ export async function parseCoaPdf(pdfBytes: Uint8Array): Promise<ParsedCoa> {
   if (!manufacturingDate) warnings.push("Manufacturing Date was not detected.");
   if (!items.length) warnings.push("No analysis rows were detected. This PDF may need OCR or a supplier-specific parser.");
 
-  return { productName, botanicalSource, partUsed, batchNumber, countryOfOrigin, manufacturingDate, expirationDate, items, rawText, warnings };
+    return { productName, botanicalSource, partUsed, batchNumber, countryOfOrigin, manufacturingDate, expirationDate, items, rawText, warnings };
+  } finally {
+    await pdf.destroy().catch(() => undefined);
+  }
 }

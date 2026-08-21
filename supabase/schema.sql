@@ -40,6 +40,20 @@ insert into storage.buckets (id, name, public) values
   ('coa-outputs','coa-outputs',false)
 on conflict (id) do update set public = false;
 
+-- Storage-level hard limits. These are enforced by Supabase even if someone
+-- bypasses the browser UI and calls the signed upload URL directly.
+update storage.buckets
+set public = false,
+    file_size_limit = 5242880,
+    allowed_mime_types = array['application/pdf']::text[]
+where id = 'coa-sources';
+
+update storage.buckets
+set public = false,
+    file_size_limit = 20971520,
+    allowed_mime_types = array['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']::text[]
+where id = 'coa-outputs';
+
 create or replace view public.project_dashboard as
 select p.*,
        count(c.id)::int as conversion_count,

@@ -1,32 +1,77 @@
 # COA Converter — Vercel + Supabase
 
-A project-based Certificate of Analysis converter built for the supplied Key-In Nutrition Excel formats.
+Project-based Certificate of Analysis converter for the supplied Key-In Nutrition Excel formats.
 
-## What is included
+## Current UI
 
-- No login screen; the Projects grid is the dashboard
-- Project dashboard in a responsive grid
-- Every conversion stored **by project**
-- Conversion history grid with status, template, product, batch, warnings and download
-- Supabase private Storage for source PDFs and generated Excel files
-- Supabase PostgreSQL history + project settings
-- Secure signed browser upload, so the PDF does not have to pass through a Vercel multipart upload endpoint
-- Native-text PDF extraction with `unpdf`
-- Automatic Powder / Assay / Ratio selection (or force a template per project)
-- Dynamic analysis rows: the output is not limited to the sample rows already present in the Excel template
-- Key-In normalization rules such as `Complies → Conforms`, source date → `YYYY.MM.DD`, and optional internal batch prefix + manufacturing date
-- Original Powder / Assay / Ratio `.xlsx` templates are embedded and also kept in `public/templates/`
+- No login/password screen
+- `/projects` is the dashboard
+- Responsive Project grid
+- First card is `+ New project`
+- Click `+` → choose a PDF → enter only the project name → create + convert
+- Every conversion/history record stays inside its project
+- History cards include Download and inline Delete / Delete now
 
-## Access
+## Upload safety hardening
 
-No login or password. Opening the site goes directly to the Projects dashboard.
+This version is intentionally strict so a bad upload is rejected instead of being allowed to consume unbounded memory/CPU:
 
-## Supabase setup
+- PDF only
+- Maximum source PDF size: **5 MB**
+- Maximum PDF pages processed: **5**
+- Maximum extracted text retained: **200,000 characters**
+- Maximum parsed analysis rows: **120**
+- Browser validates extension, MIME (when available), size and `%PDF-` signature
+- Vercel validates the upload request again
+- Supabase Storage independently enforces PDF MIME type + 5 MB bucket limit
+- Conversion validates that the Storage object belongs to the selected project
+- Storage metadata is checked before the PDF is loaded into conversion memory
+- PDF signature is checked again after download
+- Duplicate conversion requests for the same Storage object are refused
+- PDF parsing and Excel generation have execution time limits
+- Malformed/unsupported PDFs are recorded as an Error instead of crashing the project history
+- Source and output Storage buckets remain private
+- `service_role` / secret key stays server-side only
+- RLS remains enabled; `anon` and `authenticated` do not get direct project/history table access
+- Basic security response headers are enabled
 
-1. Create a Supabase project.
-2. Open SQL Editor and run `supabase/schema.sql`.
-3. Copy `.env.example` to `.env.local`.
-4. Set:
+No internet-facing application can be guaranteed impossible to crash or hack. These controls are specifically intended to make malformed, renamed, oversized or pathological uploads fail closed and limit the impact to an individual serverless request rather than the whole site.
+
+## Important access-control note
+
+Authentication is intentionally disabled because this build was requested with no password. That means anyone who can reach the production URL can use the application APIs. Upload hardening protects the conversion process, but **it is not a replacement for access control**. If the site will be publicly discoverable, enable Vercel Deployment Protection / Firewall or restore application authentication later.
+
+## Existing Supabase project — run this once
+
+If your `pdfconvertor` Supabase project is already set up, run:
+
+```text
+supabase/security-hardening.sql
+```
+
+in **Supabase → SQL Editor**.
+
+It does not delete projects/history/files. It updates the existing private buckets with hard file-size and MIME restrictions and re-applies the intended RLS/table grants.
+
+## Fresh Supabase setup
+
+For a brand-new database, run:
+
+```text
+supabase/schema.sql
+```
+
+It creates:
+
+- `projects`
+- `conversions`
+- `project_dashboard`
+- private `coa-sources`
+- private `coa-outputs`
+- RLS/grants
+- Storage size/MIME limits
+
+Environment variables:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=...
@@ -34,70 +79,28 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
-Do **not** expose `SUPABASE_SERVICE_ROLE_KEY` to the browser.
+Never put `SUPABASE_SERVICE_ROLE_KEY` in a `NEXT_PUBLIC_...` variable.
 
-The SQL creates:
+## Old login build error
 
-- `projects`
-- `conversions`
-- `project_dashboard` view
-- private `coa-sources` Storage bucket
-- private `coa-outputs` Storage bucket
-- a seeded Organic Chasteberry Powder project using `OCP + YYYYMMDD` as the output batch rule
-
-## Run locally
-
-```bash
-npm install
-npm run dev
-```
-
-Open `http://localhost:3000`; it goes directly to the Projects dashboard.
-
-## Core conversion smoke test
-
-This does not need Supabase. It parses the supplied Lipond Chaste Berry PDF and creates a Key-In-style Excel file from the supplied Powder template:
-
-```bash
-npm run smoke
-```
-
-Output:
+This package intentionally includes compatibility files for:
 
 ```text
-smoke-output/converted-chasteberry.xlsx
+src/app/api/auth/login/route.ts
+src/app/api/auth/logout/route.ts
+src/app/login/page.tsx
 ```
 
-## Deploy to Vercel
+so an older login route left in the Git checkout no longer imports `ADMIN_EMAIL`, `ADMIN_PASSWORD`, etc. `src/lib/auth.ts` also keeps legacy no-op exports as a second compatibility layer. Authentication remains disabled.
 
-1. Push this folder to GitHub.
-2. Import the repo in Vercel.
-3. Add the three Supabase environment variables.
-4. Deploy.
+When updating GitHub, replace the project and commit **all changes including deleted/overwritten files** (`git add -A`).
 
-The upload flow is:
+## Vercel
 
-```text
-Browser → signed Supabase Storage upload
-        → Vercel conversion API
-        → PDF extraction + normalization
-        → selected Excel template
-        → Supabase output Storage
-        → conversion history row
-```
+Keep the existing Vercel configuration:
 
-## Current parser boundary
+- Preset: Next.js
+- Root: `./`
+- existing three Supabase environment variables
 
-The included parser handles text-based COAs like the supplied Lipond sample. Scanned/image-only PDFs will be recorded as an error or warning until an OCR fallback is added. The code is structured so OCR can be added inside `src/lib/coa-parser.ts` without changing the project/history or Excel pipeline.
-
-## Project creation UX
-The Projects screen now starts with a `+ New project` grid card. Clicking it opens the PDF picker immediately. After a PDF is selected, the only required input is the project name; the app creates the project with automatic template detection, uploads the PDF, converts it, and opens the project history.
-
-If your Supabase database was initialized with the first demo schema and you want to remove the seeded Chasteberry sample card, run `supabase/remove-demo-project.sql` once in the Supabase SQL Editor.
-
-## v3 UI changes
-
-- Login/password removed. `/login` redirects to `/projects`.
-- `/projects` is the dashboard; there is no separate dashboard screen.
-- The first grid card is `+ New project`: choose a PDF, name the project, then conversion starts automatically.
-- Each conversion-history card has an inline Delete flow. Deleting removes the database history row, source PDF, and generated Excel file.
+Push to `main`; Vercel will redeploy automatically.
