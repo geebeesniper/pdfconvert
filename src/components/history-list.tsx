@@ -61,7 +61,7 @@ export function HistoryList({ initialHistory }: { initialHistory: HistoryItem[] 
             <article className="history-card" key={c.id}>
               <div className="history-top">
                 <span className={`status-pill ${c.status}`}>{c.status}</span>
-                <span className="template-badge">{c.template_type || "pending"}</span>
+                <span className="template-badge">{c.status === "ready" ? "KEY IN COA" : "pending"}</span>
               </div>
               <h3>{c.product_name || c.source_file_name}</h3>
               <a

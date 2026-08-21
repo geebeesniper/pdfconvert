@@ -64,8 +64,8 @@ export function safeClientError(error: unknown) {
     "Invalid PDF",
     "Project not found",
     "No COA analysis fields could be mapped",
+    "extracted text could not be matched to COA fields",
     "OCR is required",
-    "supplier layout needs a new extraction rule",
     "too many pages",
     "too much extractable text",
   ];

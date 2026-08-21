@@ -51,6 +51,8 @@ export interface ParsedCoa {
   countryOfOrigin: string;
   manufacturingDate: string;
   expirationDate: string;
+  packingAndStorage: string;
+  storageInstructions: string;
   items: AnalysisItem[];
   rawText: string;
   warnings: string[];

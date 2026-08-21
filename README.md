@@ -1,22 +1,50 @@
-# pdfconvertor v5.6
+# COA Converter — Fixed Template v6.1
 
-Flat SaaS dashboard: upload/convert at the top, all History below.
+Vercel + Supabase SaaS workflow for converting supplier COA PDFs into the fixed **Key In COA** Excel format.
 
-## v5.6 deletion fix
+## What this version does
 
-- History is now a client-managed list, so a successful DELETE removes the card immediately.
-- The home dashboard is forced dynamic (`force-dynamic`, `revalidate = 0`) so reloads always read current Supabase rows instead of a stale prerendered result.
-- DELETE now verifies that exactly one database row was actually deleted before reporting success.
-- Existing upload hardening, progress workflow, private Storage and Excel generation remain unchanged.
+- The supplier PDF may use a different layout, column order, labels, or visual table design.
+- The output is always the supplied Key In COA workbook format.
+- Workbook branding, headings, and fixed labels remain unchanged.
+- Supplier values are mapped into the fixed cells:
+  - Product Name
+  - Botanical Source
+  - Part Used
+  - Batch Number / Lot
+  - Country of Origin
+  - Manufacturing / Production Date
+  - Expiration / Expiry Date
+  - Items of Analysis / Specification / Result / Test Method
+  - Microbiological Test
+  - Packing and Storage
+- Assay/Ratio PDFs automatically use the matching supplied Key In COA variant while keeping the same overall format.
+- Source PDFs remain private in Supabase Storage and can be opened/downloaded from History through short-lived signed URLs.
+- History supports Excel download and delete.
+- Upload validation, PDF signature checks, page/size/text limits, and timeouts remain enabled.
 
-No Supabase schema or environment-variable changes are required for this update.
+## Important
 
+This converter maps **text-based PDFs** regardless of supplier layout. A PDF that contains only scanned images has no text layer and requires an OCR stage before mapping.
 
-## v5.7 supplier-independent COA parsing
+## Supabase / Vercel
 
-The parser no longer requires one fixed supplier table or a fixed list of COA rows. It rebuilds visual text lines from PDF coordinates, detects common metadata labels with aliases, and infers test/specification/result/method fields from layout and value semantics. It supports multi-column tables, reduced-column layouts, labeled prose, and vertical/card-style COA fields. Image-only scanned PDFs still require OCR.
+Existing v5.x Supabase tables and buckets are compatible. No schema reset is required.
 
-## v5.8 History source PDF
-- The original PDF filename in History is clickable and opens the private source PDF with a short-lived signed URL.
-- Each History card also has a `Download PDF` action next to `Download Excel`.
-- `coa-sources` remains private; no public bucket is required.
+Environment variables:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+```
+
+## Dashboard
+
+There is no Project Grid and no login page. The root page is:
+
+1. Upload / drop PDF
+2. Live conversion stages
+3. All History below
+
+The internal workspace project exists only as a database grouping key and is not shown in the UI.

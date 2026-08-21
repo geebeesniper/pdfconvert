@@ -4,7 +4,7 @@ import { isAdmin } from "@/lib/auth";
 import { parseCoaPdf } from "@/lib/coa-parser";
 import { resolveTemplate } from "@/lib/coa-normalizer";
 import { generateExcel } from "@/lib/excel-generator";
-import { getProject } from "@/lib/repository";
+import { getProject, WORKSPACE_PROJECT_ID } from "@/lib/repository";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import {
   MAX_PDF_BYTES,
@@ -53,6 +53,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   const { id } = await ctx.params;
   if (!isUuid(id)) return NextResponse.json({ error: "Invalid workspace." }, { status: 400 });
 
+  if (id !== WORKSPACE_PROJECT_ID) return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
   const project = await getProject(id);
   if (!project) return NextResponse.json({ error: "Workspace not found." }, { status: 404 });
 
@@ -150,13 +151,13 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
 
           send({ type: "stage", stage: "Parsing COA", detail: "Reading product, batch, dates and COA test fields across the supplier layout…", progress: 52, conversionId });
           const parsed = await withTimeout(parseCoaPdf(pdfBytes), 25_000, "PDF processing timed out.");
-          if (!parsed.items.length) throw new Error("No COA analysis fields could be mapped. If this is an image-only PDF, OCR is required; otherwise this supplier layout needs a new extraction rule.");
+          if (!parsed.items.length) throw new Error("No COA analysis fields could be mapped. If this is an image-only PDF, OCR is required; otherwise the extracted text could not be matched to COA fields.");
 
-          send({ type: "stage", stage: "Mapping fields", detail: `Detected ${parsed.items.length} COA test fields. Normalizing them into the Excel schema…`, progress: 68, conversionId });
+          send({ type: "stage", stage: "Mapping to template", detail: `Detected ${parsed.items.length} COA test fields. Mapping supplier data into the fixed Key In COA format…`, progress: 68, conversionId });
           const type = resolveTemplate(parsed, project.default_template);
 
-          send({ type: "stage", stage: "Building Excel", detail: `Using the ${type} template and preserving workbook formatting…`, progress: 80, conversionId });
-          const generated = await withTimeout(generateExcel(parsed, project, type), 10_000, "Excel generation timed out.");
+          send({ type: "stage", stage: "Building Excel", detail: "Keeping the Key In COA titles and layout unchanged while filling the mapped values…", progress: 80, conversionId });
+          const generated = await withTimeout(generateExcel(parsed, type), 10_000, "Excel generation timed out.");
           if (generated.buffer.byteLength > MAX_OUTPUT_BYTES) throw new Error("Generated Excel file exceeded the safe output limit.");
 
           send({ type: "stage", stage: "Saving output", detail: "Uploading the generated Excel file and updating History…", progress: 92, conversionId });

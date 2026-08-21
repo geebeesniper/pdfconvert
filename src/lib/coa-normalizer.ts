@@ -61,8 +61,3 @@ export function formatDotDate(value: string) {
   if (Number.isNaN(date.getTime())) return value;
   return `${date.getUTCFullYear()}.${String(date.getUTCMonth() + 1).padStart(2, "0")}.${String(date.getUTCDate()).padStart(2, "0")}`;
 }
-
-export function batchFromProject(prefix: string | null, sourceBatch: string, manufacturingDate: string) {
-  if (!prefix || !manufacturingDate) return sourceBatch;
-  return `${prefix}${manufacturingDate.replaceAll("-", "")}`;
-}

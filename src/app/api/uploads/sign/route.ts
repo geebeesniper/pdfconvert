@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth";
-import { getProject } from "@/lib/repository";
+import { getProject, WORKSPACE_PROJECT_ID } from "@/lib/repository";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { isUuid, validateDeclaredFileSize, validatePdfFileName } from "@/lib/upload-security";
 
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const fileName = validatePdfFileName(body.fileName);
     validateDeclaredFileSize(body.fileSize);
 
-    if (!(await getProject(projectId))) {
+    if (projectId !== WORKSPACE_PROJECT_ID || !(await getProject(projectId))) {
       return NextResponse.json({ error: "Project not found." }, { status: 404 });
     }
 

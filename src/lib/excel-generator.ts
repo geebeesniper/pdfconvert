@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { TEMPLATE_BASE64 } from "./template-data";
-import { batchFromProject, formatDotDate, normalizeItem } from "./coa-normalizer";
-import type { ParsedCoa, Project, ResolvedTemplateType } from "./types";
+import { formatDotDate, normalizeItem } from "./coa-normalizer";
+import type { ParsedCoa, ResolvedTemplateType } from "./types";
 
 function clone<T>(value: T): T { return JSON.parse(JSON.stringify(value)); }
 
@@ -30,14 +30,17 @@ function writeAnalysisRows(ws: ExcelJS.Worksheet, parsed: ParsedCoa) {
   const packingBefore = findRow(ws, "Packing and Storage");
   try { ws.unMergeCells(`C${packingBefore}:F${packingBefore}`); } catch {}
   try { ws.unMergeCells(`C${packingBefore + 1}:F${packingBefore + 1}`); } catch {}
+
   const analyticalRow = findRow(ws, "Analytical Data");
   const microRowBefore = findRow(ws, "Microbiological Test");
   const additionalRowBefore = findRow(ws, "Additional information");
   const chemicalStyle = styleSnapshot(ws, analyticalRow + 1);
   const microStyle = styleSnapshot(ws, microRowBefore + 1);
 
+  // The headings and workbook format remain fixed. Only the supplier data rows
+  // are replaced, allowing each supplier to use a different source layout.
   const oldChemicalCount = microRowBefore - analyticalRow - 1;
-  const oldMicroCount = additionalRowBefore - microRowBefore - 2; // leaves spacer row before Additional information
+  const oldMicroCount = additionalRowBefore - microRowBefore - 2;
   if (oldMicroCount > 0) ws.spliceRows(microRowBefore + 1, oldMicroCount);
   if (oldChemicalCount > 0) ws.spliceRows(analyticalRow + 1, oldChemicalCount);
 
@@ -69,16 +72,17 @@ function writeAnalysisRows(ws: ExcelJS.Worksheet, parsed: ParsedCoa) {
       ws.getCell(`F${r}`).value = item.testMethod;
     });
   }
+
   const packingAfter = findRow(ws, "Packing and Storage");
   ws.mergeCells(`C${packingAfter}:F${packingAfter}`);
   ws.mergeCells(`C${packingAfter + 1}:F${packingAfter + 1}`);
+  ws.getCell(`C${packingAfter}`).value = parsed.packingAndStorage || "";
+  ws.getCell(`C${packingAfter + 1}`).value = parsed.storageInstructions || "";
 }
 
-export async function generateExcel(parsed: ParsedCoa, project: Project, type: ResolvedTemplateType) {
+export async function generateExcel(parsed: ParsedCoa, type: ResolvedTemplateType) {
   const workbook = new ExcelJS.Workbook();
   const nodeBuffer = Buffer.from(TEMPLATE_BASE64[type], "base64");
-  // ExcelJS 4.x types load() as ArrayBuffer. Node's Buffer is a Uint8Array
-  // view, so pass the exact underlying byte range as a real ArrayBuffer.
   const templateBuffer = nodeBuffer.buffer.slice(
     nodeBuffer.byteOffset,
     nodeBuffer.byteOffset + nodeBuffer.byteLength,
@@ -87,13 +91,13 @@ export async function generateExcel(parsed: ParsedCoa, project: Project, type: R
   const ws = workbook.worksheets[0];
   if (!ws) throw new Error("Template workbook has no worksheet.");
 
-  const outputProduct = project.output_product_name?.trim() || parsed.productName;
-  const outputBatch = batchFromProject(project.batch_prefix, parsed.batchNumber, parsed.manufacturingDate);
-  ws.getCell("C4").value = outputProduct;
-  ws.getCell("C5").value = parsed.botanicalSource;
-  ws.getCell("F5").value = parsed.partUsed;
-  ws.getCell("C6").value = outputBatch;
-  ws.getCell("F6").value = parsed.countryOfOrigin;
+  // Fixed Key In COA template: titles/labels/branding never come from the supplier PDF.
+  // Only values are mapped into the fixed cells.
+  ws.getCell("C4").value = parsed.productName || "";
+  ws.getCell("C5").value = parsed.botanicalSource || "";
+  ws.getCell("F5").value = parsed.partUsed || "";
+  ws.getCell("C6").value = parsed.batchNumber || "";
+  ws.getCell("F6").value = parsed.countryOfOrigin || "";
   ws.getCell("C7").value = formatDotDate(parsed.manufacturingDate);
   ws.getCell("F7").value = formatDotDate(parsed.expirationDate);
 
@@ -107,8 +111,13 @@ export async function generateExcel(parsed: ParsedCoa, project: Project, type: R
   }
 
   writeAnalysisRows(ws, parsed);
+
   workbook.creator = "COA Converter";
   workbook.lastModifiedBy = "COA Converter";
   const out = await workbook.xlsx.writeBuffer();
-  return { buffer: Buffer.from(out), outputProduct, outputBatch };
+  return {
+    buffer: Buffer.from(out),
+    outputProduct: parsed.productName || "",
+    outputBatch: parsed.batchNumber || "",
+  };
 }

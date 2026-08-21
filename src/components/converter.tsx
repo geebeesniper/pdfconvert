@@ -146,7 +146,7 @@ export function Converter({ projectId, enabled }: { projectId: string; enabled: 
           setJob({
             status: "ready",
             stage: "Excel ready",
-            detail: "The file was generated and added to History.",
+            detail: "Supplier data was mapped into the fixed Key In COA template and added to History.",
             progress: 100,
             startedAt: job.startedAt ?? Date.now(),
           });
@@ -195,7 +195,7 @@ export function Converter({ projectId, enabled }: { projectId: string; enabled: 
       );
       if (up.error) throw up.error;
 
-      updateJob("Queued", "Upload complete. Starting COA extraction…", 30);
+      updateJob("Queued", "Upload complete. Reading supplier data for the fixed COA template…", 30);
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 55_000);
       let response: Response;
@@ -241,7 +241,7 @@ export function Converter({ projectId, enabled }: { projectId: string; enabled: 
   return (
     <section className="panel upload-panel saas-converter">
       <div className="panel-title">
-        <div><strong>COA Converter</strong><span>Drop PDF → process → Excel → History</span></div>
+        <div><strong>COA Converter</strong><span>Supplier PDF → fixed Key In COA format → Excel → History</span></div>
         <span className={`service-pill ${busy ? "busy" : "online"}`}>{busy ? "Processing" : "Ready"}</span>
       </div>
 
@@ -274,7 +274,7 @@ export function Converter({ projectId, enabled }: { projectId: string; enabled: 
           <div className="job-steps" aria-hidden="true">
             <span className={job.progress >= 18 ? "done" : "active"}>Upload</span>
             <span className={job.progress >= 45 ? "done" : job.progress >= 18 ? "active" : ""}>Read PDF</span>
-            <span className={job.progress >= 66 ? "done" : job.progress >= 45 ? "active" : ""}>Map COA</span>
+            <span className={job.progress >= 66 ? "done" : job.progress >= 45 ? "active" : ""}>Map Template</span>
             <span className={job.progress >= 86 ? "done" : job.progress >= 66 ? "active" : ""}>Build Excel</span>
             <span className={job.progress >= 100 ? "done" : job.progress >= 86 ? "active" : ""}>Save</span>
           </div>

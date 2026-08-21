@@ -2,7 +2,6 @@ import { readFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { parseCoaPdf } from "../src/lib/coa-parser";
 import { generateExcel } from "../src/lib/excel-generator";
-import type { Project } from "../src/lib/types";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(`Smoke test failed: ${message}`);
@@ -25,20 +24,10 @@ console.log("Parsed header:", {
   warnings: parsed.warnings,
 });
 
-const project: Project = {
-  id: "smoke",
-  name: "Organic Chasteberry Powder",
-  description: null,
-  default_template: "powder",
-  output_product_name: "Organic Chasteberry Powder",
-  batch_prefix: "OCP",
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-};
-
-const result = await generateExcel(parsed, project, "powder");
-assert(result.outputProduct === "Organic Chasteberry Powder", "project product override failed");
-assert(result.outputBatch === "OCP20250314", `unexpected output batch: ${result.outputBatch}`);
+const result = await generateExcel(parsed, "powder");
+assert(result.outputProduct === "Chaste Berry Powder", `unexpected output product: ${result.outputProduct}`);
+assert(result.outputBatch === "CT2603184", `unexpected output batch: ${result.outputBatch}`);
+assert(parsed.packingAndStorage.includes("25kg"), `packing/storage not detected: ${parsed.packingAndStorage}`);
 
 const outDir = path.join(root, "smoke-output");
 await mkdir(outDir, { recursive: true });

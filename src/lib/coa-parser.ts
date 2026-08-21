@@ -540,6 +540,50 @@ function parseFlexibleAnalysis(lines: VisualLine[]): AnalysisItem[] {
   return items;
 }
 
+
+function extractAdditionalInfo(lines: VisualLine[]) {
+  let packingAndStorage = "";
+  let storageInstructions = "";
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const text = clean(line.text);
+    if (!text) continue;
+
+    const labelMatch = text.match(/^(?:Packing(?:\s*(?:and|&)\s*)Storage|Packaging(?:\s*(?:and|&)\s*)Storage|Packing)\s*[:#-]?\s*(.*)$/i);
+    if (labelMatch) {
+      packingAndStorage = clean(labelMatch[1] || "");
+      if (!packingAndStorage && line.chunks.length > 1) {
+        packingAndStorage = clean(line.chunks.slice(1).join(" "));
+      }
+
+      for (let j = i + 1; j < Math.min(lines.length, i + 4); j += 1) {
+        const next = clean(lines[j].text);
+        if (!next) continue;
+        if (/^(?:Shelf Life|Certificate|Prepared|Approved|Page\s+\d+)/i.test(next)) break;
+        if (/^(?:Store|Storage|Keep|Preserve)\b/i.test(next)) {
+          storageInstructions = next.replace(/^Storage\s*[:#-]?\s*/i, "");
+          break;
+        }
+        if (!packingAndStorage && next.length < 260) {
+          packingAndStorage = next;
+        } else if (!storageInstructions && next.length < 260) {
+          storageInstructions = next;
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  if (!storageInstructions) {
+    const storageLine = lines.find((line) => /^(?:Store|Storage|Keep|Preserve)\b/i.test(clean(line.text)));
+    if (storageLine) storageInstructions = clean(storageLine.text).replace(/^Storage\s*[:#-]?\s*/i, "");
+  }
+
+  return { packingAndStorage, storageInstructions };
+}
+
 function fallbackLinesFromText(rawText: string): VisualLine[] {
   return rawText.split(/\r?\n/).map((line) => {
     const chunks = line.split(/\t|\s{2,}/).map(clean).filter(Boolean);
@@ -585,6 +629,7 @@ export async function parseCoaPdf(pdfBytes: Uint8Array): Promise<ParsedCoa> {
     const manufacturingDate = dateToIso(fieldValueFromVisualLines(visualLines, "manufacturingDate"));
     const expirationDate = dateToIso(fieldValueFromVisualLines(visualLines, "expirationDate"));
     const items = parseFlexibleAnalysis(visualLines);
+    const { packingAndStorage, storageInstructions } = extractAdditionalInfo(visualLines);
 
     const warnings: string[] = [];
     if (!productName) warnings.push("Product name was not detected automatically.");
@@ -606,6 +651,8 @@ export async function parseCoaPdf(pdfBytes: Uint8Array): Promise<ParsedCoa> {
       countryOfOrigin,
       manufacturingDate,
       expirationDate,
+      packingAndStorage,
+      storageInstructions,
       items,
       rawText,
       warnings,
