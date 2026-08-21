@@ -4,7 +4,7 @@ A project-based Certificate of Analysis converter built for the supplied Key-In 
 
 ## What is included
 
-- Hardcoded server-side admin login for the demo
+- No login screen; the Projects grid is the dashboard
 - Project dashboard in a responsive grid
 - Every conversion stored **by project**
 - Conversion history grid with status, template, product, batch, warnings and download
@@ -17,12 +17,9 @@ A project-based Certificate of Analysis converter built for the supplied Key-In 
 - Key-In normalization rules such as `Complies → Conforms`, source date → `YYYY.MM.DD`, and optional internal batch prefix + manufacturing date
 - Original Powder / Assay / Ratio `.xlsx` templates are embedded and also kept in `public/templates/`
 
-## Demo login
+## Access
 
-**Email:** `admin@keyin.local`  
-**Password:** `K1N!COA#2026@Vercel$Sup4base^9Qz`
-
-This is intentionally hardcoded because the current request is for a private demo. The password is checked only on the server and the browser receives an HttpOnly signed session cookie. Replace this with Supabase Auth or another identity provider before exposing the site publicly.
+No login or password. Opening the site goes directly to the Projects dashboard.
 
 ## Supabase setup
 
@@ -55,7 +52,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000` and sign in with the demo login above.
+Open `http://localhost:3000`; it goes directly to the Projects dashboard.
 
 ## Core conversion smoke test
 
@@ -97,3 +94,10 @@ The included parser handles text-based COAs like the supplied Lipond sample. Sca
 The Projects screen now starts with a `+ New project` grid card. Clicking it opens the PDF picker immediately. After a PDF is selected, the only required input is the project name; the app creates the project with automatic template detection, uploads the PDF, converts it, and opens the project history.
 
 If your Supabase database was initialized with the first demo schema and you want to remove the seeded Chasteberry sample card, run `supabase/remove-demo-project.sql` once in the Supabase SQL Editor.
+
+## v3 UI changes
+
+- Login/password removed. `/login` redirects to `/projects`.
+- `/projects` is the dashboard; there is no separate dashboard screen.
+- The first grid card is `+ New project`: choose a PDF, name the project, then conversion starts automatically.
+- Each conversion-history card has an inline Delete flow. Deleting removes the database history row, source PDF, and generated Excel file.

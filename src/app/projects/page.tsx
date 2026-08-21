@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
 import { listProjects } from "@/lib/repository";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { LogoutButton } from "@/components/logout-button";
 import { NewProjectForm } from "@/components/new-project-form";
 
 function date(v?: string | null) {
@@ -12,7 +10,6 @@ function date(v?: string | null) {
 }
 
 export default async function ProjectsPage() {
-  await requireAdmin();
   const projects = await listProjects();
   const configured = isSupabaseConfigured();
 
@@ -22,15 +19,14 @@ export default async function ProjectsPage() {
         <div><span className="logo-chip">K</span><strong>COA Converter</strong></div>
         <div className="top-actions">
           <span className="environment">{configured ? "Supabase connected" : "Demo mode"}</span>
-          <LogoutButton />
         </div>
       </header>
 
       <div className="content projects-content">
         <div className="projects-title-row">
           <div>
-            <p className="eyebrow">PROJECTS</p>
-            <h1>COA projects</h1>
+            <p className="eyebrow">DASHBOARD</p>
+            <h1>Projects</h1>
           </div>
           <span className="project-count">{projects.length} project{projects.length === 1 ? "" : "s"}</span>
         </div>
