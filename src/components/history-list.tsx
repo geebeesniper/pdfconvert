@@ -64,7 +64,15 @@ export function HistoryList({ initialHistory }: { initialHistory: HistoryItem[] 
                 <span className="template-badge">{c.template_type || "pending"}</span>
               </div>
               <h3>{c.product_name || c.source_file_name}</h3>
-              <p className="file-name">{c.source_file_name}</p>
+              <a
+                className="file-name file-link"
+                href={`/api/conversions/${c.id}/source`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Open original PDF"
+              >
+                {c.source_file_name}
+              </a>
               <div className="history-meta">
                 <div><span>Batch</span><strong>{c.batch_number || "—"}</strong></div>
                 <div><span>Converted</span><strong>{formatDate(c.created_at)}</strong></div>
@@ -72,7 +80,8 @@ export function HistoryList({ initialHistory }: { initialHistory: HistoryItem[] 
               </div>
               {c.error_message && <div className="notice error compact">{c.error_message}</div>}
               <div className="history-actions">
-                <div>
+                <div className="history-downloads">
+                  <a className="ghost small" href={`/api/conversions/${c.id}/source?download=1`}>Download PDF</a>
                   {c.status === "ready"
                     ? <a className="primary small" href={`/api/conversions/${c.id}/download`}>Download Excel</a>
                     : <span className="muted">Output unavailable</span>}
